@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
 using CliWrap;
@@ -10,60 +12,81 @@ public class DevServer
     private const string URL_PREFIX = "http://";
     private CancellationTokenSource cancelDevServer;
     private Uri devServerUrl;
+    private ManualResetEvent devServerReady;
 
     public DevServer()
     {
         devServerUrl = null!;
         cancelDevServer = new CancellationTokenSource();
+        devServerReady = new ManualResetEvent(false);
+    }
+
+    private string GetProjectDirectory()
+    {
+        var entry = Assembly.GetEntryAssembly();
+        if (entry == null) throw new InvalidOperationException();
+
+        return Path.GetFullPath(Path.Combine(entry.Location, "..", "..", "..", ".."));
     }
 
     public async Task Start()
     {
+        var projDir = GetProjectDirectory();
+
+        var stdin = new MemoryStream();
+
         // start a separate process with the npm command.
         var cmd = Cli.Wrap(ProgramDefaults.DevTerminalExecutable)
-            .WithWorkingDirectory(ProgramDefaults.DevUserInterfaceDirectory)
-            .WithArguments("/k" + ProgramDefaults.DevRunUserInterfaceDevMode);
+            .WithWorkingDirectory(Path.Combine(projDir, ProgramDefaults.DevUserInterfaceDirectory))
+            .WithStandardInputPipe(PipeSource.FromStream(stdin))
+            .WithArguments("/C " + ProgramDefaults.DevRunUserInterfaceDevMode);
 
-        // listen for all incoming events, especially the stdout from the dev server
-        await foreach (var cmdEvent in cmd.ListenAsync(Encoding.UTF8, cancelDevServer.Token))
+        int? pid = null;
+
+        try
         {
-            switch (cmdEvent)
+            // listen for all incoming events, especially the stdout from the dev server
+            await foreach (var cmdEvent in cmd.ListenAsync(Encoding.UTF8, cancelDevServer.Token))
             {
-                case StartedCommandEvent started:
-                    Console.WriteLine($"Process started; ID: {started.ProcessId}");
-                    break;
-                case StandardOutputCommandEvent stdOut:
-                    Console.WriteLine($"Out> {stdOut.Text}");
+                switch (cmdEvent)
+                {
+                    case StartedCommandEvent started:
+                        Console.WriteLine($"Process started; ID: {started.ProcessId}");
+                        pid = started.ProcessId;
+                        break;
+                    case StandardOutputCommandEvent stdOut:
+                        Console.WriteLine($"Out> {stdOut.Text}");
 
-                    if (stdOut.Text.Contains(URL_PREFIX))
-                    {
-                        // if the text contains an url, try to find the url in the message, so that we know
-                        // where we should redirect the user, so that he can visit the dev server.
-                        devServerUrl = DetermineDevServerUrl(stdOut);
-                    }
-                    break;
-                case StandardErrorCommandEvent stdErr:
-                    Console.WriteLine($"Err> {stdErr.Text}");
-                    break;
-                case ExitedCommandEvent exited:
-                    Console.WriteLine($"Process exited; Code: {exited.ExitCode}");
-                    break;
+                        if (stdOut.Text.Contains(URL_PREFIX))
+                        {
+                            // if the text contains an url, try to find the url in the message, so that we know
+                            // where we should redirect the user, so that he can visit the dev server.
+                            devServerUrl = DetermineDevServerUrl(stdOut);
+                            devServerReady.Set();
+                        }
+                        break;
+                    case StandardErrorCommandEvent stdErr:
+                        Console.WriteLine($"Err> {stdErr.Text}");
+                        break;
+                    case ExitedCommandEvent exited:
+                        Console.WriteLine($"Process exited; Code: {exited.ExitCode}");
+                        break;
+                }
+            }
+        } catch (OperationCanceledException)
+        {
+            if (pid != null)
+            {
+                Console.WriteLine($"Killing {pid.Value} and descendents");
+                var proc = Process.GetProcessById(pid.Value);
+                proc?.Kill();
             }
         }
     }
 
     public void WaitUntilReady()
     {
-        // wait until the dev server is up and running
-        while (true)
-        {
-            if (IsReady())
-            {
-                break;
-            }
-
-            Thread.Sleep(ProgramDefaults.DevWaitUntilReadyTimeSpan);
-        }
+        devServerReady.WaitOne();
     }
 
     public void Stop()

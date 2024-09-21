@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <OutputType>WinExe</OutputType>
+    <OutputType>Exe</OutputType>
     <TargetFramework>net6.0</TargetFramework>
     <Platforms>AnyCPU</Platforms>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -22,9 +22,9 @@
   </ItemGroup>
   
   <ItemGroup>
-    <PackageReference Include="CliWrap" Version="3.6.0" />
-    <PackageReference Include="Microsoft.Extensions.FileProviders.Embedded" Version="6.0.9" />
-    <PackageReference Include="Photino.NET" Version="2.3.0" />
-    <PackageReference Include="Photino.NET.Server" Version="1.0.0" />
+    <PackageReference Include="CliWrap" Version="3.6.6" />
+    <PackageReference Include="Microsoft.Extensions.FileProviders.Embedded" Version="8.0.8" />
+    <PackageReference Include="Photino.NET" Version="3.1.17" />
+    <PackageReference Include="Photino.NET.Server" Version="1.2.1" />
   </ItemGroup>
 </Project>

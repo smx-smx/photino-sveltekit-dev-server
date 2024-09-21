@@ -1,4 +1,6 @@
-﻿using System.Drawing;
+﻿using System.ComponentModel;
+using System.Drawing;
+using Photino.NET;
 using PhotinoNET;
 using PhotinoNET.Server;
 
@@ -31,7 +33,10 @@ class Program
         if (useDevServer)
         {
             windowTitle = "My Application (Debug)";
-            var devServerTask = devServer.Start();
+            new Task(async () =>
+            {
+                await devServer.Start();
+            }).Start();
 
             // wait until we were able to read the dev-server url from the stdout of the npm run
             // so that we know were Photino should navigate.
