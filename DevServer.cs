@@ -79,7 +79,7 @@ public class DevServer
             {
                 Console.WriteLine($"Killing {pid.Value} and descendents");
                 var proc = Process.GetProcessById(pid.Value);
-                proc?.Kill();
+                proc?.Kill(true);
             }
         }
     }
