@@ -38,45 +38,31 @@ public class DevServer
             .WithWorkingDirectory(Path.Combine(projDir, ProgramDefaults.DevUserInterfaceDirectory))
             .WithArguments("/C " + ProgramDefaults.DevRunUserInterfaceDevMode);
 
-        int? pid = null;
-
-        try
+        // listen for all incoming events, especially the stdout from the dev server
+        await foreach (var cmdEvent in cmd.ListenAsync(Encoding.UTF8, Encoding.UTF8, CancellationToken.None, cancelDevServer.Token))
         {
-            // listen for all incoming events, especially the stdout from the dev server
-            await foreach (var cmdEvent in cmd.ListenAsync(Encoding.UTF8, cancelDevServer.Token))
+            switch (cmdEvent)
             {
-                switch (cmdEvent)
-                {
-                    case StartedCommandEvent started:
-                        Console.WriteLine($"Process started; ID: {started.ProcessId}");
-                        pid = started.ProcessId;
-                        break;
-                    case StandardOutputCommandEvent stdOut:
-                        Console.WriteLine($"Out> {stdOut.Text}");
+                case StartedCommandEvent started:
+                    Console.WriteLine($"Process started; ID: {started.ProcessId}");
+                    break;
+                case StandardOutputCommandEvent stdOut:
+                    Console.WriteLine($"Out> {stdOut.Text}");
 
-                        if (stdOut.Text.Contains(URL_PREFIX))
-                        {
-                            // if the text contains an url, try to find the url in the message, so that we know
-                            // where we should redirect the user, so that he can visit the dev server.
-                            devServerUrl = DetermineDevServerUrl(stdOut);
-                            devServerReady.Set();
-                        }
-                        break;
-                    case StandardErrorCommandEvent stdErr:
-                        Console.WriteLine($"Err> {stdErr.Text}");
-                        break;
-                    case ExitedCommandEvent exited:
-                        Console.WriteLine($"Process exited; Code: {exited.ExitCode}");
-                        break;
-                }
-            }
-        } catch (OperationCanceledException)
-        {
-            if (pid != null)
-            {
-                Console.WriteLine($"Killing {pid.Value} and descendents");
-                var proc = Process.GetProcessById(pid.Value);
-                proc?.Kill(true);
+                    if (stdOut.Text.Contains(URL_PREFIX))
+                    {
+                        // if the text contains an url, try to find the url in the message, so that we know
+                        // where we should redirect the user, so that he can visit the dev server.
+                        devServerUrl = DetermineDevServerUrl(stdOut);
+                        devServerReady.Set();
+                    }
+                    break;
+                case StandardErrorCommandEvent stdErr:
+                    Console.WriteLine($"Err> {stdErr.Text}");
+                    break;
+                case ExitedCommandEvent exited:
+                    Console.WriteLine($"Process exited; Code: {exited.ExitCode}");
+                    break;
             }
         }
     }
