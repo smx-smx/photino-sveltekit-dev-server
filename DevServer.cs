@@ -33,12 +33,9 @@ public class DevServer
     {
         var projDir = GetProjectDirectory();
 
-        var stdin = new MemoryStream();
-
         // start a separate process with the npm command.
         var cmd = Cli.Wrap(ProgramDefaults.DevTerminalExecutable)
             .WithWorkingDirectory(Path.Combine(projDir, ProgramDefaults.DevUserInterfaceDirectory))
-            .WithStandardInputPipe(PipeSource.FromStream(stdin))
             .WithArguments("/C " + ProgramDefaults.DevRunUserInterfaceDevMode);
 
         int? pid = null;
