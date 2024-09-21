@@ -4,7 +4,7 @@
 
 ## Prerequisites
 
--   .Net6 installed
+-   .Net8 installed
 -   Node.js / npm installed
 -   Your dependencies for your user interface are already installed (see below)
 
@@ -24,7 +24,7 @@ From now on, after starting the app, your app will automatically start your dev 
 
 This is a POC, so please expect that the code could be better, but I have added some comments to the tricky part.
 
-###### Not to myself:
+###### Note to myself:
 
 Here are the typings for typescript for the exposed methods, that we can use with photino:
 
